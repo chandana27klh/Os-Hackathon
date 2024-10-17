@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU Scheduling Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2, h3 {
+            color: #333;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #ganttChartContainer {
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CPU Scheduling Simulator</h1>
+
+        <form id="processForm">
+            <label for="numProcesses">Enter the number of processes:</label>
+            <input type="number" id="numProcesses" min="1" required>
+
+            <div id="processInputs"></div>
+
+            <button type="button" onclick="addProcessInputs()">Add Processes</button>
+            <button type="submit">Run Simulation</button>
+        </form>
+
+        <div id="ganttChartContainer">
+            <canvas id="ganttChart"></canvas>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function addProcessInputs() {
+            const numProcesses = document.getElementById('numProcesses').value;
+            const processInputs = document.getElementById('processInputs');
+            processInputs.innerHTML = ''; // Clear existing inputs
+
+            for (let i = 0; i < numProcesses; i++) {
+                processInputs.innerHTML += `
+                    <h3>Process ${i + 1}</h3>
+                    <label>Arrival Time:</label>
+                    <input type="number" class="arrivalTime" required>
+                    <label>Burst Time:</label>
+                    <input type="number" class="burstTime" required>
+                    <label>Priority:</label>
+                    <input type="number" class="priority" required>
+                `;
+            }
+        }
+
+        document.getElementById('processForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const arrivalTimes = [...document.getElementsByClassName('arrivalTime')].map(input => parseInt(input.value));
+            const burstTimes = [...document.getElementsByClassName('burstTime')].map(input => parseInt(input.value));
+            const priorities = [...document.getElementsByClassName('priority')].map(input => parseInt(input.value));
+
+            // Example of how to call the FCFS algorithm (you can extend this)
+            const results = fcfs(arrivalTimes, burstTimes, priorities);
+            displayResults(results);
+            drawGanttChart(results);
+        });
+
+        function fcfs(arrivalTimes, burstTimes, priorities) {
+            // Implement FCFS scheduling logic here
+            const n = arrivalTimes.length;
+            let completionTimes = Array(n).fill(0);
+            let waitingTimes = Array(n).fill(0);
+            let turnaroundTimes = Array(n).fill(0);
+            let currentTime = 0;
+
+            for (let i = 0; i < n; i++) {
+                if (currentTime < arrivalTimes[i]) {
+                    currentTime = arrivalTimes[i];
+                }
+                currentTime += burstTimes[i];
+                completionTimes[i] = currentTime;
+                turnaroundTimes[i] = completionTimes[i] - arrivalTimes[i];
+                waitingTimes[i] = turnaroundTimes[i] - burstTimes[i];
+            }
+
+            return { completionTimes, turnaroundTimes, waitingTimes, burstTimes };
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <h2>Results</h2>
+                <table>
+                    <tr>
+                        <th>Process ID</th>
+                        <th>Burst Time</th>
+                        <th>Waiting Time</th>
+                        <th>Turnaround Time</th>
+                    </tr>
+                    ${results.burstTimes.map((burstTime, i) => `
+                        <tr>
+                            <td>P${i + 1}</td>
+                            <td>${burstTime}</td>
+                            <td>${results.waitingTimes[i]}</td>
+                            <td>${results.turnaroundTimes[i]}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+        }
+
+        function drawGanttChart(results) {
+            const ctx = document.getElementById('ganttChart').getContext('2d');
+            const { completionTimes, turnaroundTimes } = results;
+
+            const labels = [...Array(completionTimes.length).keys()].map(i => `P${i + 1}`);
+            const data = {
+                labels: labels,
+                datasets: [{
+                    label: 'Completion Times',
+                    data: completionTimes,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            };
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
